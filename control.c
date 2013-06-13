@@ -87,16 +87,10 @@ fail:
 	goto out;
 }
 
-/* !TW! these counters are the pending and committed clocks for disk writes.
- * Currently only supports protecting one disk for one VM.  Should make this more
- * general to have at least one counter per VM.
- * */
-uint32_t dr_epoch_counter[VECTOR_CLOCK_MAX_SZ];		/* Pending write counter */
-uint32_t dr_commit_counter[VECTOR_CLOCK_MAX_SZ]; 	/* Committed write counter */
-int dr_node_mode;		/* DR Mode: 0==non-writer, else = array entry to use for writer is node_mode -1 (i.e., 1-->[0], 2--->[1], etc) */
-EXPORT_SYMBOL(dr_epoch_counter);
-EXPORT_SYMBOL(dr_commit_counter);
-EXPORT_SYMBOL(dr_node_mode);  /* TODO extend mode to support multiple writers */
+/* Counters defined in netback.c */
+extern uint32_t dr_epoch_counter[VECTOR_CLOCK_MAX_SZ];		/* Pending write counter */
+extern uint32_t dr_commit_counter[VECTOR_CLOCK_MAX_SZ]; 	/* Committed write counter */
+extern int dr_node_mode;		/* DR Mode: 0==non-writer, else = array entry to use for writer is node_mode -1 (i.e., 1-->[0], 2--->[1], etc) */
 
 static void
 blktap_control_put_minor(struct blktap* tap)
