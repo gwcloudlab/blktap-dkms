@@ -9,6 +9,8 @@ Module.symvers
 blktap.mod.c
 modules.order
 .tmp_versions/
+*.orig
+*.rej
 
 # Libraries
 *.lib

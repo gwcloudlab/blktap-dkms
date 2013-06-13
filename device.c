@@ -30,9 +30,19 @@
 
 #include "blktap.h"
 
+#include <xen/dr.h>
+
 int blktap_device_major;
 
 #define dev_to_blktap(_dev) container_of(_dev, struct blktap, device)
+/** !TW! DR variables    **/
+extern uint32_t dr_epoch_counter[VECTOR_CLOCK_MAX_SZ]; // !TW! defined in blktap/control.c
+extern int dr_node_mode; // !TW! defined in blktap/control.c
+int dr_dev_minor = -1; 	// !TW! minor device ID of the DR tap disk
+/* dr_dev_minor is used to track which tap disk is being protected for DR
+ * Currently only the last tapdisk added to the system is protected.
+ * TODO support multiple DR devices or have a smarter way of setting this
+*/
 
 static int
 blktap_device_open(struct block_device *bdev, fmode_t mode)
@@ -223,8 +233,16 @@ blktap_device_make_request(struct blktap *tap, struct request *rq,
 
 	nsegs = blk_rq_map_sg(rq->q, rq, request->sg_table);
 
-	if (rq_data_dir(rq) == WRITE)
+	if (rq_data_dir(rq) == WRITE) {
 		request->operation = BLKTAP_OP_WRITE;
+		if(dr_node_mode>0 && dr_node_mode <= VECTOR_CLOCK_MAX_SZ
+			&& dr_dev_minor == tapdev->gd->first_minor)
+		{ // !TW! increasing counter on write
+			dr_epoch_counter[dr_node_mode-1]+=nsegs; // adjust by number of segments since each gets turned to a request at user level
+			// !TW! TODO: have a smarter way to differentiate between DR and non-DR tap devices
+			mb();
+		}
+	}
 	else
 		request->operation = BLKTAP_OP_READ;
 
@@ -517,6 +535,13 @@ blktap_device_create(struct blktap *tap, struct blktap_device_info *info)
 
 	if (blktap_device_validate_info(tap, info))
 		return -EINVAL;
+
+	if(dr_node_mode > 0 && dr_node_mode <= VECTOR_CLOCK_MAX_SZ)
+	{
+		printk("TWDR: Creating new device %d, resetting dr_epoch_counter to 0\n", minor);
+		dr_epoch_counter[dr_node_mode-1] = 0;
+		dr_dev_minor = minor;
+	}
 
 	gd = alloc_disk(1);
 	if (!gd) {

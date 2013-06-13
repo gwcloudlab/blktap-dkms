@@ -27,6 +27,8 @@
 #include <linux/slab.h>
 #include <asm/uaccess.h>
 
+#include <xen/dr.h>
+
 #include "blktap.h"
 
 DEFINE_MUTEX(blktap_lock);
@@ -84,6 +86,17 @@ fail:
 	tap = NULL;
 	goto out;
 }
+
+/* !TW! these counters are the pending and committed clocks for disk writes.
+ * Currently only supports protecting one disk for one VM.  Should make this more
+ * general to have at least one counter per VM.
+ * */
+uint32_t dr_epoch_counter[VECTOR_CLOCK_MAX_SZ];		/* Pending write counter */
+uint32_t dr_commit_counter[VECTOR_CLOCK_MAX_SZ]; 	/* Committed write counter */
+int dr_node_mode;		/* DR Mode: 0==non-writer, else = array entry to use for writer is node_mode -1 (i.e., 1-->[0], 2--->[1], etc) */
+EXPORT_SYMBOL(dr_epoch_counter);
+EXPORT_SYMBOL(dr_commit_counter);
+EXPORT_SYMBOL(dr_node_mode);  /* TODO extend mode to support multiple writers */
 
 static void
 blktap_control_put_minor(struct blktap* tap)
@@ -309,6 +322,24 @@ static int __init
 blktap_init(void)
 {
 	int err;
+	int i;
+
+	if(dr_node_mode <= 0 || dr_node_mode > VECTOR_CLOCK_MAX_SZ)
+	{
+		/* Reset all DR counters */
+		for(i=0; i< VECTOR_CLOCK_MAX_SZ; i++)
+		{
+			dr_epoch_counter[i] = 0;	// !TW!
+			dr_commit_counter[i] = 0;
+		}
+		dr_node_mode = 0;	// TODO what is correct mode to start in?
+	}
+	else if(dr_node_mode <= VECTOR_CLOCK_MAX_SZ )
+	{
+		dr_epoch_counter[dr_node_mode-1] = 0;
+		dr_commit_counter[dr_node_mode-1] = 0;
+	}
+	printk("blktap--DR_EPOCH_COUNTER[0] = %u / %u MODE = %d \n", dr_epoch_counter[0], dr_commit_counter[0], dr_node_mode); // !TW!
 
 	err = blktap_device_init();
 	if (err)
