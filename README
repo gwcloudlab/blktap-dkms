@@ -4,5 +4,10 @@ To compile:
 
 make -C /lib/modules/`uname -r`/build M=$PWD
 
+to install:
+
+sudo insmod ./blktap.ko
+
 Tested on debian sid, with linux-image-3.0.0-rc3-686-pae
+and on ubuntu 12.04 with linux 3.7
 

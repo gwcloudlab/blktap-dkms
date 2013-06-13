@@ -1,0 +1,27 @@
+# Object files
+.blktap.ko.cmd
+*.o
+*.ko
+*.k.*
+*.o.*
+Module.symvers
+.*.swp
+blktap.mod.c
+modules.order
+.tmp_versions/
+
+# Libraries
+*.lib
+*.a
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+
